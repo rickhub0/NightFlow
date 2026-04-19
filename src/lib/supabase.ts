@@ -8,7 +8,7 @@ export const getSupabase = (): SupabaseClient | null => {
   const supabaseUrl = process.env.VITE_SUPABASE_URL;
   const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
-  if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === 'https://gnodgvujkemhxsvrttur.supabase.co' || supabaseAnonKey === 'sb_publishable_nZfERn2yEyTvm69TPxxeOg_s7XbOLr7') {
+  if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === 'https://gnodgvujkemhxsvrttur.supabase.co' || supabaseAnonKey === 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdub2RndnVqa2VtaHhzdnJ0dHVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNTEzNTUsImV4cCI6MjA5MTgyNzM1NX0.aXPcTPcGEvT1_jhPbzf9ICwLRMU1sv5WlAjAOhglukQ') {
     return null;
   }
 

@@ -17,11 +17,31 @@ import {
   Search,
   MoreVertical,
   Trash2,
-  Zap
+  Zap,
+  HardDrive
 } from 'lucide-react';
 import { supabase, type Task } from './lib/supabase';
 import { parseTask } from './lib/gemini';
 import { format } from 'date-fns';
+
+const LOCAL_TASKS_KEY = 'nightflow_tasks';
+
+function loadLocalTasks(): Task[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_TASKS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalTasks(tasks: Task[]) {
+  localStorage.setItem(LOCAL_TASKS_KEY, JSON.stringify(tasks));
+}
+
+function generateId() {
+  return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
+}
 
 export default function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -31,14 +51,17 @@ export default function App() {
   const [focusMode, setFocusMode] = useState(false);
 
   useEffect(() => {
-    if (!supabase) return;
+    if (!supabase) {
+      setTasks(loadLocalTasks());
+      return;
+    }
 
     fetchTasks();
     
     // Realtime subscription
     const channel = supabase
       .channel('tasks-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
         fetchTasks();
       })
       .subscribe();
@@ -50,7 +73,7 @@ export default function App() {
 
   const fetchTasks = async () => {
     if (!supabase) return;
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('tasks')
       .select('*')
       .order('created_at', { ascending: false });
@@ -60,13 +83,32 @@ export default function App() {
 
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || !supabase) return;
+    if (!input.trim()) return;
 
     setIsParsing(true);
     const parsed = await parseTask(input);
+
+    if (!supabase) {
+      const newTask: Task = {
+        id: generateId(),
+        user_id: 'local',
+        title: parsed.title,
+        category: parsed.category,
+        priority: parsed.priority,
+        due_at: parsed.due_at,
+        completed: false,
+        created_at: new Date().toISOString(),
+      };
+      const updated = [newTask, ...tasks];
+      setTasks(updated);
+      saveLocalTasks(updated);
+      setInput('');
+      setIsParsing(false);
+      return;
+    }
     
     const { error } = await supabase.from('tasks').insert([{
-      user_id: '00000000-0000-0000-0000-000000000000', // Mock user ID for now
+      user_id: '00000000-0000-0000-0000-000000000000',
       title: parsed.title,
       category: parsed.category,
       priority: parsed.priority,
@@ -82,14 +124,18 @@ export default function App() {
   };
 
   const toggleComplete = async (task: Task) => {
-    if (!supabase) return;
+    if (!supabase) {
+      const updated = tasks.map(t => t.id === task.id ? { ...t, completed: !t.completed } : t);
+      setTasks(updated);
+      saveLocalTasks(updated);
+      return;
+    }
     const { error } = await supabase
       .from('tasks')
       .update({ completed: !task.completed })
       .eq('id', task.id);
     
     if (!error && !task.completed) {
-      // Move to history logic could go here
       await supabase.from('history').insert([{
         user_id: task.user_id,
         task_id: task.id,
@@ -100,34 +146,14 @@ export default function App() {
   };
 
   const deleteTask = async (id: string) => {
-    if (!supabase) return;
+    if (!supabase) {
+      const updated = tasks.filter(t => t.id !== id);
+      setTasks(updated);
+      saveLocalTasks(updated);
+      return;
+    }
     await supabase.from('tasks').delete().eq('id', id);
   };
-
-  if (!supabase) {
-    return (
-      <div className="min-h-screen bg-bg flex items-center justify-center p-6">
-        <div className="glass-panel p-12 max-w-md text-center">
-          <div className="w-16 h-16 bg-accent/20 rounded-2xl flex items-center justify-center text-accent mx-auto mb-6">
-            <Zap size={32} fill="currentColor" />
-          </div>
-          <h1 className="text-2xl font-bold mb-4">Configuration Required</h1>
-          <p className="text-text-dim text-sm mb-8 leading-relaxed">
-            Please set your <span className="text-accent font-mono">VITE_SUPABASE_URL</span> and <span className="text-accent font-mono">VITE_SUPABASE_ANON_KEY</span> in the Secrets panel to activate your productivity system.
-          </p>
-          <div className="bg-black/30 rounded-xl p-4 text-left border border-glass-border">
-            <p className="text-[10px] uppercase tracking-widest font-bold text-text-dim mb-2">Setup Guide</p>
-            <ol className="text-xs text-text-dim space-y-2 list-decimal pl-4">
-              <li>Go to Supabase Project Settings</li>
-              <li>Copy Project URL and Anon Key</li>
-              <li>Open Secrets panel in AI Studio</li>
-              <li>Add the variables and restart</li>
-            </ol>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex h-screen p-5 gap-5 overflow-hidden">
@@ -147,10 +173,17 @@ export default function App() {
         </nav>
 
         <div className="mt-auto pt-6 border-t border-glass-border">
-          <div className="flex items-center gap-2 text-[11px] text-emerald-400">
-            <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full shadow-[0_0_8px_#4caf50]" />
-            Realtime Sync: Active
-          </div>
+          {supabase ? (
+            <div className="flex items-center gap-2 text-[11px] text-emerald-400">
+              <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full shadow-[0_0_8px_#4caf50]" />
+              Realtime Sync: Active
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-[11px] text-amber-400">
+              <HardDrive size={12} />
+              Local Mode
+            </div>
+          )}
         </div>
       </aside>
 

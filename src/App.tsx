@@ -48,7 +48,7 @@ export default function App() {
   const [input, setInput] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const [view, setView] = useState<'today' | 'history' | 'analytics'>('today');
-  const [focusMode, setFocusMode] = useState(false);
+
 
   useEffect(() => {
     if (!supabase) {

@@ -8,7 +8,7 @@ export const getSupabase = (): SupabaseClient | null => {
   const supabaseUrl = process.env.VITE_SUPABASE_URL;
   const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
-  if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === '' || supabaseAnonKey === '') {
+  if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === 'https://gnodgvujkemhxsvrttur.supabase.co' || supabaseAnonKey === 'sb_publishable_nZfERn2yEyTvm69TPxxeOg_s7XbOLr7') {
     return null;
   }
 

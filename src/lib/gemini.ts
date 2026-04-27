@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'AIzaSyCyKHQqXzY8M6DmW1NDq9p6IESk09AZU7A' });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'GEMINI API PASTE HERE' });
 
 export async function parseTask(input: string) {
   try {
